@@ -24,9 +24,16 @@ class WebhookController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
+          # return my massage 
+          case event.message['text']
+          when "おすすめの映画は？"
+            my_massage = "スパイダーマンです"
+          else
+            my_massage = "わかりません"
+          end
           message = {
             type: 'text',
-            text: event.message['text']
+            text: my_massage
           }
           client.reply_message(event['replyToken'], message)
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
