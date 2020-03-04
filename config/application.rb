@@ -15,6 +15,6 @@ module RubyGettingStarted
     # Application configuration can go into files in config/initializers
     # -- all .rb files in that directory are automatically loaded after loading
     # the framework and any gems in your application.
-    config.hosts << "651fc626.ngrok.io"
+    config.hosts << "7ef2e394.ngrok.io"
   end
 end
