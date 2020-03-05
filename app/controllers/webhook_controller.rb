@@ -23,21 +23,31 @@ class WebhookController < ApplicationController
     events = client.parse_events_from(body)
     events.each { |event|
       case event
-      # event is Message from LINE
       when Line::Bot::Event::Message
         case event.type
-        # when message is Text
         when Line::Bot::Event::MessageType::Text
-          # return my message
-          # api url
-          tmdb_url_discover_movie = "https://api.themoviedb.org/3/discover/movie"
-          uri = URI(tmdb_url_discover_movie)
+          uri = URI("https://api.themoviedb.org/3/discover/movie")
+          genre_id = TmdbGenre.find_id_by_name(event.message['text'])
 
-          # genre search
-          genre = TmdbGenre.find_id_by_name(event.message['text'])
+          messages = []
+          if genre_id.nil? then
+            pre_message = <<~EOS
+            そのジャンルはありませんでした...
+            代わりに全ジャンルから探します！\n
 
-          # get query, serch option
-          qer = {
+            EOS
+          else
+            pre_message = <<~EOS
+            #{event.message['text']}のおすすめはこちらです！\n
+            EOS
+          end
+          messages.push({
+            type: 'text',
+            text: pre_message
+          })
+
+          # TMDb api
+          search_option = {
             "api_key"=>ENV["TMDB_API_KEY"],
             "language"=>"ja",
             "sort_by"=>"popularity.desc",
@@ -45,71 +55,36 @@ class WebhookController < ApplicationController
             "include_video"=>"false",
             "page"=>"1",
           }
-
-          # return messages
-          messages = []
-
-          # serch genres define
-          if genre.nil? then
-            pre_message = <<-EOS
-そのジャンルはありませんでした...
-代わりに全ジャンルから探します！
-
-            EOS
-          else
-            pre_message = <<-EOS
-#{event.message['text']}のおすすめはこちらです！
-
-            EOS
-            qer["with_genres"] = genre.to_s
+          if genre_id.nil? then
+            search_option["with_genres"] = genre_id.to_s
           end
-
-          # add pre message
-          messages.push({
-            type: 'text',
-            text: pre_message
-          })
-
-          #define uri
-          uri.query = URI.encode_www_form(qer)
-
-          # get response
+          uri.query = URI.encode_www_form(search_option)
           res = Net::HTTP.get_response(uri)
-
-          # print status code
           puts res.code
-
-          # transform json data to hash
           data = JSON.parse(res.body.to_s)
 
-          # add message recommend movies
           recommend_movies = ""
           data["results"].each{ |movie|
             recommend_movies += movie["title"]+"\n"
           }
-
           messages.push({
             type: 'text',
             text: recommend_movies
           })
 
-          # add message genres_list
-          genres_list = "こちらがジャンルリストです\n\n"
-          if genre.nil? then
-            TmdbGenre::GENRES.keys.each{ |genre|
-              genres_list += "#{genre}\n"
+          genres_list_message = "こちらがジャンルリストです\n\n"
+          if genre_id.nil? then
+            TmdbGenre::GENRES.keys.each{ |genre_name|
+              genres_list_message += "#{genre_name}\n"
             }
-
             messages.push({
               type: 'text',
-              text: genres_list
+              text: genres_list_message
             })
           end
 
-          # reply for LINE
           client.reply_message(event['replyToken'], messages)
 
-        # when message is Image or Message
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
           response = client.get_message_content(event.message['id'])
           tf = Tempfile.open("content")
