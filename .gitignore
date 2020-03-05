@@ -20,4 +20,6 @@
 
 # Ignore ruby-version
 /.ruby-version
+
+#Ignore env local
 /.env.local
