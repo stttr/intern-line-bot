@@ -26,63 +26,7 @@ class WebhookController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
-          uri = URI("https://api.themoviedb.org/3/discover/movie")
-          genre_id = TmdbGenre.find_id_by_name(event.message['text'])
-
-          messages = []
-          if genre_id.nil? then
-            pre_message = <<~EOS
-            そのジャンルはありませんでした...
-            代わりに全ジャンルから探します！\n
-
-            EOS
-          else
-            pre_message = <<~EOS
-            #{event.message['text']}のおすすめはこちらです！\n
-            EOS
-          end
-          messages.push({
-            type: 'text',
-            text: pre_message
-          })
-
-          # TMDb api
-          search_option = {
-            "api_key"=>ENV["TMDB_API_KEY"],
-            "language"=>"ja",
-            "sort_by"=>"popularity.desc",
-            "include_adult"=>"false",
-            "include_video"=>"false",
-            "page"=>"1",
-          }
-          if genre_id.nil? then
-            search_option["with_genres"] = genre_id.to_s
-          end
-          uri.query = URI.encode_www_form(search_option)
-          res = Net::HTTP.get_response(uri)
-          puts res.code
-          data = JSON.parse(res.body.to_s)
-
-          recommend_movies = ""
-          data["results"].each{ |movie|
-            recommend_movies += movie["title"]+"\n"
-          }
-          messages.push({
-            type: 'text',
-            text: recommend_movies
-          })
-
-          genres_list_message = "こちらがジャンルリストです\n\n"
-          if genre_id.nil? then
-            TmdbGenre::GENRES.keys.each{ |genre_name|
-              genres_list_message += "#{genre_name}\n"
-            }
-            messages.push({
-              type: 'text',
-              text: genres_list_message
-            })
-          end
-
+          messages = generate_messages(event.message['text'])
           client.reply_message(event['replyToken'], messages)
 
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
@@ -93,5 +37,112 @@ class WebhookController < ApplicationController
       end
     }
     head :ok
+  end
+
+  def generate_messages(genre)
+    genre_id = TmdbGenre.find_id_by_name(genre)
+    if genre_id.nil?
+      not_found_genres_message()
+    else
+      found_genres_message(genre, genre_id)
+    end
+  end
+
+  def not_found_genres_message
+    messages = []
+    messages.push({
+      type: 'text',
+      text: not_found_genres_pre_message()
+    })
+    messages.push({
+      type: 'text',
+      text: not_found_genres_search_message()
+    })
+    messages.push({
+      type: 'text',
+      text: not_found_genres_list_message()
+    })
+
+    return messages
+  end
+
+  def not_found_genres_pre_message
+   return <<~EOS
+   そのジャンルはありませんでした...
+   代わりに全ジャンルから探します！\n
+   EOS
+  end
+
+  def not_found_genres_search_message
+    option = generate_search_option()
+    data = access_tmdb_api(option)
+
+    return data["results"].map { |movie| movie["title"] }.join("\n")
+  end
+
+  def not_found_genres_list_message()
+    genres_list_message = "こちらがジャンルリストです\n\n"
+
+    TmdbGenre.genres_list().each{ |genre_name|
+     genres_list_message +=  "#{genre_name}\n"
+    }
+
+    return genres_list_message
+  end
+
+
+  def generate_search_option(add_option: "nothing")
+    search_option = {
+      "api_key"=>ENV["TMDB_API_KEY"],
+      "language"=>"ja",
+      "sort_by"=>"popularity.desc",
+      "include_adult"=>"false",
+      "include_video"=>"false",
+      "page"=>"1",
+    }
+
+    if add_option != "nothing"
+      add_option.keys.each{ |option_key|
+        search_option[option_key] = add_option[option_key]
+      }
+    end
+
+    return search_option
+  end
+
+
+  def found_genres_message(genre, genre_id)
+    messages = []
+    messages.push({
+      type: 'text',
+      text: found_genres_pre_message(genre)
+    })
+    messages.push({
+      type: 'text',
+      text: found_genres_search_message(genre_id)
+    })
+    #search_option
+  end
+
+
+  def found_genres_pre_message(genre)
+    return<<~EOS
+    #{genre}のおすすめはこちらです！\n
+    EOS
+  end
+
+  def found_genres_search_message(genre_id)
+    option = generate_search_option(add_option:{"with_genres" => genre_id})
+    data = access_tmdb_api(option)
+
+    return data["results"].map { |movie| movie["title"] }.join("\n")
+  end
+
+  def access_tmdb_api(search_option)
+    uri = URI(TmdbGenre.url)
+    uri.query = URI.encode_www_form(search_option)
+    res = Net::HTTP.get_response(uri)
+    data = JSON.parse(res.body.to_s)
+    return data
   end
 end

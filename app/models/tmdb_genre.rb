@@ -1,6 +1,8 @@
 class TmdbGenre
   # from by
   # https://api.themoviedb.org/3/genre/movie/list?api_key=dcab2f241020c5bf67097428d0fddca1&language=ja
+  URL = "https://api.themoviedb.org/3/discover/movie"
+
   GENRES = {
     "アクション"=> 28,
     "アドベンチャー"=> 12,
@@ -26,4 +28,15 @@ class TmdbGenre
   def self.find_id_by_name(name)
     GENRES[name]
   end
+
+  def self.url
+    URL
+  end
+
+  def self.genres_list()
+    GENRES.keys.each{ |genre_name|
+      genre_name
+    }
+  end
+
 end
