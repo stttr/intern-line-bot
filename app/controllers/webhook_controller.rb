@@ -63,35 +63,29 @@ class WebhookController < ApplicationController
       text: not_found_genres_list_message()
     })
 
-    return messages
+    messages
   end
 
   def not_found_genres_pre_message
-   return <<~EOS
-   そのジャンルはありませんでした...
-   代わりに全ジャンルから探します！\n
-   EOS
+    <<~EOS
+    そのジャンルはありませんでした...
+    代わりに全ジャンルから探します！\n
+    EOS
   end
 
   def not_found_genres_search_message
     option = generate_search_option()
     data = access_tmdb_api(option)
 
-    return data["results"].map { |movie| movie["title"] }.join("\n")
+    data["results"].map { |movie| movie["title"] }.join("\n")
   end
 
   def not_found_genres_list_message()
-    genres_list_message = "こちらがジャンルリストです\n\n"
-
-    TmdbGenre.genres_list().each{ |genre_name|
-     genres_list_message +=  "#{genre_name}\n"
-    }
-
-    return genres_list_message
+    "こちらがジャンルリストです\n\n" + TmdbGenre.genres_list().join("\n")
   end
 
 
-  def generate_search_option(add_option: "nothing")
+  def generate_search_option(add_option:"nothing")
     search_option = {
       "api_key"=>ENV["TMDB_API_KEY"],
       "language"=>"ja",
@@ -102,12 +96,10 @@ class WebhookController < ApplicationController
     }
 
     if add_option != "nothing"
-      add_option.keys.each{ |option_key|
-        search_option[option_key] = add_option[option_key]
-      }
+      search_option.merge!(add_option)
     end
 
-    return search_option
+    search_option
   end
 
 
@@ -121,12 +113,11 @@ class WebhookController < ApplicationController
       type: 'text',
       text: found_genres_search_message(genre_id)
     })
-    #search_option
   end
 
 
   def found_genres_pre_message(genre)
-    return<<~EOS
+    <<~EOS
     #{genre}のおすすめはこちらです！\n
     EOS
   end
@@ -135,14 +126,13 @@ class WebhookController < ApplicationController
     option = generate_search_option(add_option:{"with_genres" => genre_id})
     data = access_tmdb_api(option)
 
-    return data["results"].map { |movie| movie["title"] }.join("\n")
+    data["results"].map { |movie| movie["title"] }.join("\n")
   end
 
   def access_tmdb_api(search_option)
     uri = URI(TmdbGenre.url)
     uri.query = URI.encode_www_form(search_option)
     res = Net::HTTP.get_response(uri)
-    data = JSON.parse(res.body.to_s)
-    return data
+    JSON.parse(res.body.to_s)
   end
 end
