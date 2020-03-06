@@ -27,9 +27,6 @@ class WebhookController < ApplicationController
         case event.type
         when Line::Bot::Event::MessageType::Text
           messages = generate_messages(event.message['text'])
-          require 'pp'
-          pp messages
-
           client.reply_message(event['replyToken'], messages)
 
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
@@ -43,18 +40,9 @@ class WebhookController < ApplicationController
   end
 
   def generate_messages(genre)
-    print "select", select_search_option_by_genre(genre)
     search_option = generate_search_option(select_search_option_by_genre(genre))
     data = access_tmdb_api(search_option)
-    a = generate_carousel_messages(data)
-
-    # genre_id = TmdbGenre.find_id_by_name(genre)
-    # if genre_id.nil?
-    #   not_found_genres_message()
-    # else
-    #   found_genres_message(genre, genre_id)
-    # end
-
+    generate_carousel_messages(data)
   end
 
   def select_search_option_by_genre(genre)
@@ -63,9 +51,15 @@ class WebhookController < ApplicationController
       {}
     when "最新"
       {
-        "sort_by"=>"popularity.desc",
+        "sort_by"=>"popularity.desc"
       }
     else
+      genre_id = TmdbGenre.find_id_by_name(genre)
+      if genre_id.nil?
+        not_found_genres_message()
+      else
+        found_genres_message(genre, genre_id)
+      end
       {}
     end
   end
@@ -99,9 +93,6 @@ class WebhookController < ApplicationController
   def generate_carousel_messages(data, columns_num=5)
     columns = []
     data["results"].slice(0, columns_num).each { |movie|
-      p movie["poster_path"]
-      p movie["title"]
-
       columns.push(
         {
           "thumbnailImageUrl": TmdbGenre.url_img()+movie["poster_path"],
@@ -110,12 +101,13 @@ class WebhookController < ApplicationController
           "text": movie["original_title"],
           "actions": [{
               "type": "uri",
-              "label": "View detail",
-              "uri": "http://example.com/"
+              "label": "Search this movie",
+              "uri": TmdbGenre.url_movie+"/"+movie["id"].to_s+"?language=ja"
           }]
         }
       )
     }
+
     {
       "type": "template",
       "altText": "申し訳ございません。",

@@ -3,7 +3,7 @@ class TmdbGenre
   # https://api.themoviedb.org/3/genre/movie/list?api_key=dcab2f241020c5bf67097428d0fddca1&language=ja
   URL = "https://api.themoviedb.org/3/discover/movie"
   URL_IMG_W500 = "https://image.tmdb.org/t/p/w500"
-  URL_SEARCH = "https://www.themoviedb.org/search"
+  URL_MOVIE = "https://www.themoviedb.org/movie"
 
   GENRES = {
     "アクション"=> 28,
@@ -35,8 +35,8 @@ class TmdbGenre
     URL_IMG_W500
   end
 
-  def self.url_search
-    URL_SEARCH
+  def self.url_movie
+    URL_MOVIE
   end
 
   def self.find_id_by_name(name)
