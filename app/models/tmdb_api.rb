@@ -1,4 +1,4 @@
-class TmdbGenre
+class TmdbApi
   # from by
   # https://api.themoviedb.org/3/genre/movie/list?api_key=dcab2f241020c5bf67097428d0fddca1&language=ja
   URL = "https://api.themoviedb.org/3/discover/movie"

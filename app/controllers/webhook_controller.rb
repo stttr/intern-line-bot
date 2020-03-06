@@ -60,7 +60,7 @@ class WebhookController < ApplicationController
         ].join("-")
       }
     else
-      genre_id = TmdbGenre.find_id_by_name(genre)
+      genre_id = TmdbApi.find_id_by_name(genre)
       if genre_id.nil?
         not_found_genres_message()
       else
@@ -90,7 +90,7 @@ class WebhookController < ApplicationController
   end
 
   def access_tmdb_api(search_option)
-    uri = URI(TmdbGenre.url)
+    uri = URI(TmdbApi.url)
     uri.query = URI.encode_www_form(search_option)
     res = Net::HTTP.get_response(uri)
     JSON.parse(res.body.to_s)
@@ -102,14 +102,14 @@ class WebhookController < ApplicationController
       if not movie["poster_path"].blank?
         columns.push(
           {
-            "thumbnailImageUrl": TmdbGenre.url_img()+movie["poster_path"],
+            "thumbnailImageUrl": TmdbApi.url_img()+movie["poster_path"],
             "imageBackgroundColor": "#000000",
             "title": movie["title"],
             "text": movie["original_title"],
             "actions": [{
                 "type": "uri",
                 "label": "Search this movie",
-                "uri": TmdbGenre.url_movie+"/"+movie["id"].to_s+"?language=ja"
+                "uri": TmdbApi.url_movie+"/"+movie["id"].to_s+"?language=ja"
             }]
           }
         )
@@ -129,6 +129,8 @@ class WebhookController < ApplicationController
   end
 
   def generate_genre_button_message()
+    TmdbApi.genres_list()
+  end
 
 
 
@@ -164,7 +166,7 @@ class WebhookController < ApplicationController
   end
 
   def not_found_genres_list_message()
-    "こちらがジャンルリストです\n\n" + TmdbGenre.genres_list().join("\n")
+    "こちらがジャンルリストです\n\n" + TmdbApi.genres_list().join("\n")
   end
 
   def found_genres_message(genre, genre_id)
