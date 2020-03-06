@@ -27,7 +27,9 @@ class WebhookController < ApplicationController
         case event.type
         when Line::Bot::Event::MessageType::Text
           messages = generate_messages(event.message['text'])
-          p messages
+          require 'pp'
+          pp messages
+
           client.reply_message(event['replyToken'], messages)
 
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
@@ -41,26 +43,35 @@ class WebhookController < ApplicationController
   end
 
   def generate_messages(genre)
+    print "select", select_search_option_by_genre(genre)
+    search_option = generate_search_option(select_search_option_by_genre(genre))
+    data = access_tmdb_api(search_option)
+    a = generate_carousel_messages(data)
+
+    # genre_id = TmdbGenre.find_id_by_name(genre)
+    # if genre_id.nil?
+    #   not_found_genres_message()
+    # else
+    #   found_genres_message(genre, genre_id)
+    # end
+
+  end
+
+  def select_search_option_by_genre(genre)
     case genre
     when "人気"
-      popular_search_option = generate_search_option()
-      data = access_tmdb_api(popular_search_option)
-      movie_poster_path = data["results"].map { |movie| movie["poster_path"]}
-      generate_carousel_messages(movie_poster_path)
+      {}
     when "最新"
-
+      {
+        "sort_by"=>"popularity.desc",
+      }
     else
-      genre_id = TmdbGenre.find_id_by_name(genre)
-      if genre_id.nil?
-        not_found_genres_message()
-      else
-        found_genres_message(genre, genre_id)
-      end
+      {}
     end
   end
 
   def generate_search_option(**add_option)
-    if add_option.nil?
+    if add_option.blank?
       default_search_option()
     else
       default_search_option().merge(**add_option)
@@ -71,7 +82,7 @@ class WebhookController < ApplicationController
     {
       "api_key"=>ENV["TMDB_API_KEY"],
       "language"=>"ja",
-      # "sort_by"=>"popularity.desc",
+      "sort_by"=>"popularity.desc",
       "include_adult"=>"false",
       "include_video"=>"false",
       "page"=>"1",
@@ -85,94 +96,36 @@ class WebhookController < ApplicationController
     JSON.parse(res.body.to_s)
   end
 
-  def generate_carousel_messages(movie_poster_path, columns_num=5)
+  def generate_carousel_messages(data, columns_num=5)
     columns = []
-    movie_poster_path.slice(0, columns_num).each { |img_name|
-      p TmdbGenre.url_img()+img_name
-
-      # columns.push({
-      #     "imageUrl": TmdbGenre.url_img()+img_name,
-      #     "action": {
-      #        "type":"message",
-      #        "label":img_name.slice(0,4),
-      #        "text":img_name.slice(0,4)
-      #     }
-      # })
+    data["results"].slice(0, columns_num).each { |movie|
+      p movie["poster_path"]
+      p movie["title"]
 
       columns.push(
         {
-          "thumbnailImageUrl": TmdbGenre.url_img()+img_name,
+          "thumbnailImageUrl": TmdbGenre.url_img()+movie["poster_path"],
           "imageBackgroundColor": "#000000",
-          "title": "this is menu",
-          "text": "description",
-          "defaultAction": {
+          "title": movie["title"],
+          "text": movie["original_title"],
+          "actions": [{
               "type": "uri",
               "label": "View detail",
-              "uri": "http://example.com/page/123"
-          },
-          "actions": [
-              {
-                  "type": "uri",
-                  "label": "View detail",
-                  "uri": "http://example.com/page/111"
-              }
-          ]
+              "uri": "http://example.com/"
+          }]
         }
       )
     }
-
-    # {
-    #   "type": "template",
-    #   "altText": "this is a image carousel template",
-    #   "template": {
-    #       "type": "image_carousel",
-    #       "columns": columns
-    #   }
-    # }
-
-
-    # {
-    #   "thumbnailImageUrl": "https://example.com/bot/images/item1.jpg",
-    #   "imageBackgroundColor": "#FFFFFF",
-    #   "title": "this is menu",
-    #   "text": "description",
-    #   "defaultAction": {
-    #       "type": "uri",
-    #       "label": "View detail",
-    #       "uri": "http://example.com/page/123"
-    #   },
-    #   "actions": [
-    #       {
-    #           "type": "postback",
-    #           "label": "Buy",
-    #           "data": "action=buy&itemid=111"
-    #       },
-    #       {
-    #           "type": "postback",
-    #           "label": "Add to cart",
-    #           "data": "action=add&itemid=111"
-    #       },
-    #       {
-    #           "type": "uri",
-    #           "label": "View detail",
-    #           "uri": "http://example.com/page/111"
-    #       }
-    #   ]
-    # }
-
-
-
-  {
-    "type": "template",
-    "altText": "this is a carousel template",
-    "template": {
-        "type": "carousel",
-        "columns":columns,
-        "imageAspectRatio": "rectangle",
-        "imageSize": "contain"
+    {
+      "type": "template",
+      "altText": "申し訳ございません。",
+      "template": {
+          "type": "carousel",
+          "columns": columns,
+          "imageAspectRatio": "rectangle",
+          "imageSize": "contain"
+      }
     }
-  }
-
   end
 
 
@@ -203,8 +156,6 @@ class WebhookController < ApplicationController
   def not_found_genres_search_message
     option = generate_search_option()
     data = access_tmdb_api(option)
-    require 'pp'
-    pp data["results"][0]["id"]
     data["results"].map { |movie| movie["title"] }.join("\n")
   end
 
