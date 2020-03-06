@@ -27,12 +27,9 @@ class WebhookController < ApplicationController
         case event.type
         when Line::Bot::Event::MessageType::Text
           messages = generate_messages(event.message['text'])
-          client.reply_message(event['replyToken'], messages)
-
-        when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
-          response = client.get_message_content(event.message['id'])
-          tf = Tempfile.open("content")
-          tf.write(response.body)
+          res = client.reply_message(event['replyToken'], messages)
+          p res
+          p res.body
         end
       end
     }
@@ -40,9 +37,18 @@ class WebhookController < ApplicationController
   end
 
   def generate_messages(genre)
-    search_option = generate_search_option(select_search_option_by_genre(genre))
-    data = access_tmdb_api(search_option)
-    generate_carousel_messages(data)
+    case genre
+    when "ジャンル"
+      generate_genre_button_message()
+    else
+      search_option = generate_search_option(select_search_option_by_genre(genre))
+      if search_option.has_key?("with_genres")
+        data = access_tmdb_api(search_option)
+        generate_carousel_messages(data)
+      else
+        found_genres_search_message()
+      end
+    end
   end
 
   def select_search_option_by_genre(genre)
@@ -61,12 +67,9 @@ class WebhookController < ApplicationController
       }
     else
       genre_id = TmdbApi.find_id_by_name(genre)
-      if genre_id.nil?
-        not_found_genres_message()
-      else
-        found_genres_message(genre, genre_id)
-      end
-      {}
+      {
+        "with_genres"=>genre_id
+      }
     end
   end
 
@@ -104,13 +107,15 @@ class WebhookController < ApplicationController
           {
             "thumbnailImageUrl": TmdbApi.url_img()+movie["poster_path"],
             "imageBackgroundColor": "#000000",
-            "title": movie["title"],
+            "title": movie["title"].truncate(60),
             "text": movie["original_title"],
-            "actions": [{
+            "actions": [
+              {
                 "type": "uri",
                 "label": "Search this movie",
                 "uri": TmdbApi.url_movie+"/"+movie["id"].to_s+"?language=ja"
-            }]
+              }
+            ]
           }
         )
       end
@@ -128,8 +133,33 @@ class WebhookController < ApplicationController
     }
   end
 
-  def generate_genre_button_message()
-    TmdbApi.genres_list()
+  def generate_genre_button_message(columns_num=10)
+    columns = []
+    TmdbApi.genres_list().sample(columns_num).each { |genre|
+      columns.push(
+        {
+          "text": genre,
+          "actions":[
+            {
+              "type":"message",
+              "label": genre,
+              "text": genre
+            }
+          ]
+        }
+      )
+    }
+
+    {
+      "type": "template",
+      "altText": "映画ジャンル一覧です。",
+      "template": {
+          "type": "carousel",
+          "columns": columns,
+          "imageAspectRatio": "rectangle",
+          "imageSize": "contain"
+      }
+    }
   end
 
 
