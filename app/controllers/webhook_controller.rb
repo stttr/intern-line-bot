@@ -51,7 +51,7 @@ class WebhookController < ApplicationController
       {}
     when "最新"
       {
-        "sort_by"=>"popularity.desc"
+        "sort_by"=>"release_date.desc"
       }
     else
       genre_id = TmdbGenre.find_id_by_name(genre)
@@ -64,11 +64,15 @@ class WebhookController < ApplicationController
     end
   end
 
-  def generate_search_option(**add_option)
+  def generate_search_option(add_option)
+    p add_option
     if add_option.blank?
+      p "blank"
       default_search_option()
     else
-      default_search_option().merge(**add_option)
+      p "add_option"
+      p default_search_option().merge(add_option)
+      default_search_option().merge(add_option)
     end
   end
 
@@ -90,27 +94,29 @@ class WebhookController < ApplicationController
     JSON.parse(res.body.to_s)
   end
 
-  def generate_carousel_messages(data, columns_num=5)
+  def generate_carousel_messages(data, columns_num=10)
     columns = []
     data["results"].slice(0, columns_num).each { |movie|
-      columns.push(
-        {
-          "thumbnailImageUrl": TmdbGenre.url_img()+movie["poster_path"],
-          "imageBackgroundColor": "#000000",
-          "title": movie["title"],
-          "text": movie["original_title"],
-          "actions": [{
-              "type": "uri",
-              "label": "Search this movie",
-              "uri": TmdbGenre.url_movie+"/"+movie["id"].to_s+"?language=ja"
-          }]
-        }
-      )
+      if not movie["poster_path"].blank?
+        columns.push(
+          {
+            "thumbnailImageUrl": TmdbGenre.url_img()+movie["poster_path"],
+            "imageBackgroundColor": "#000000",
+            "title": movie["title"],
+            "text": movie["original_title"],
+            "actions": [{
+                "type": "uri",
+                "label": "Search this movie",
+                "uri": TmdbGenre.url_movie+"/"+movie["id"].to_s+"?language=ja"
+            }]
+          }
+        )
+      end
     }
 
     {
       "type": "template",
-      "altText": "申し訳ございません。",
+      "altText": "映画一覧です。",
       "template": {
           "type": "carousel",
           "columns": columns,
