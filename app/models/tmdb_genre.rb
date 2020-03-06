@@ -2,6 +2,7 @@ class TmdbGenre
   # from by
   # https://api.themoviedb.org/3/genre/movie/list?api_key=dcab2f241020c5bf67097428d0fddca1&language=ja
   URL = "https://api.themoviedb.org/3/discover/movie"
+  URL_IMG_W500 = "https://image.tmdb.org/t/p/w500"
 
   GENRES = {
     "アクション"=> 28,
@@ -31,6 +32,10 @@ class TmdbGenre
 
   def self.url
     URL
+  end
+
+  def self.url_img
+    URL_IMG_W500
   end
 
   def self.genres_list()
