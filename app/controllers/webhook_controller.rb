@@ -28,8 +28,6 @@ class WebhookController < ApplicationController
         when Line::Bot::Event::MessageType::Text
           messages = generate_messages(event.message['text'])
           res = client.reply_message(event['replyToken'], messages)
-          p res
-          p res.body
         end
       end
     }
@@ -42,11 +40,11 @@ class WebhookController < ApplicationController
       generate_genre_button_message()
     else
       search_option = generate_search_option(select_search_option_by_genre(genre))
-      if search_option.has_key?("with_genres")
+      if search_option.has_key?("with_genres") && search_option["with_genres"].blank?
+        not_found_genres_message()
+      else
         data = access_tmdb_api(search_option)
         generate_carousel_messages(data)
-      else
-        found_genres_search_message()
       end
     end
   end
@@ -108,7 +106,12 @@ class WebhookController < ApplicationController
             "thumbnailImageUrl": TmdbApi.url_img()+movie["poster_path"],
             "imageBackgroundColor": "#000000",
             "title": movie["title"].truncate(60),
-            "text": movie["original_title"],
+            "text": movie["original_title"].truncate(60),
+            "defaultAction": {
+              "type": "uri",
+              "label": "Search this movie",
+              "uri": TmdbApi.url_movie+"/"+movie["id"].to_s+"?language=ja"
+            },
             "actions": [
               {
                 "type": "uri",
@@ -163,18 +166,16 @@ class WebhookController < ApplicationController
   end
 
 
-
-
   def not_found_genres_message
     messages = []
     messages.push({
       type: 'text',
       text: not_found_genres_pre_message()
     })
-    messages.push({
-      type: 'text',
-      text: not_found_genres_search_message()
-    })
+    # messages.push({
+    #   type: 'text',
+    #   text: not_found_genres_search_message()
+    # })
     messages.push({
       type: 'text',
       text: not_found_genres_list_message()
@@ -184,8 +185,7 @@ class WebhookController < ApplicationController
 
   def not_found_genres_pre_message
     <<~EOS
-    そのジャンルはありませんでした...
-    代わりに全ジャンルから探します！\n
+    そのジャンルはありませんでした...\n
     EOS
   end
 
