@@ -50,8 +50,14 @@ class WebhookController < ApplicationController
     when "人気"
       {}
     when "最新"
+      now_time = Time.now
       {
-        "sort_by"=>"release_date.desc"
+        "sort_by"=>"release_date.desc",
+        "release_date.lte"=>[
+            now_time.year.to_s,
+            now_time.month.to_s.rjust(2, "0"),
+            now_time.day.to_s.rjust(2, "0")
+        ].join("-")
       }
     else
       genre_id = TmdbGenre.find_id_by_name(genre)
@@ -65,13 +71,9 @@ class WebhookController < ApplicationController
   end
 
   def generate_search_option(add_option)
-    p add_option
     if add_option.blank?
-      p "blank"
       default_search_option()
     else
-      p "add_option"
-      p default_search_option().merge(add_option)
       default_search_option().merge(add_option)
     end
   end
@@ -125,6 +127,10 @@ class WebhookController < ApplicationController
       }
     }
   end
+
+  def generate_genre_button_message()
+
+
 
 
   def not_found_genres_message
