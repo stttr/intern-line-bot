@@ -17,6 +17,6 @@ module RubyGettingStarted
     # the framework and any gems in your application.
 
     config.hosts << /[a-z0-9]+\.ngrok\.io/
-    config.hosts << /[a-z0-9]+\.herokuapp\.com/
+    config.hosts << /[a-z0-9\-]+\.herokuapp\.com/
   end
 end
